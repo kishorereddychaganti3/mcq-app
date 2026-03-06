@@ -1,9 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { supabase } from '../../../lib/supabase'
+import { Suspense } from 'react'
+import MapQuestionsClient from './MapQuestionsClient'
 
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MapQuestionsClient />
+    </Suspense>
+  )
+}
 export default function MapQuestionsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
