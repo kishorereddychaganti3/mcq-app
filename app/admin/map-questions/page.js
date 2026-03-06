@@ -3,14 +3,14 @@
 import { Suspense } from 'react'
 import MapQuestionsClient from './MapQuestionsClient'
 
-export default function Page() {
+
+export default function MapQuestionsPage() {
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <MapQuestionsClient />
     </Suspense>
   )
-}
-export default function MapQuestionsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const examId = searchParams.get('examId')
