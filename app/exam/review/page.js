@@ -16,8 +16,8 @@ export default function ExamReview() {
   async function init() {
     try {
 
-      // ✅ FIX 1 — use session instead of getUser
-      const { data: { session: authSession } } = await supabase.auth.getSession()
+      const { data: { session: authSession } } =
+        await supabase.auth.getSession()
 
       if (!authSession?.user) {
         window.location.href = '/'
@@ -33,12 +33,13 @@ export default function ExamReview() {
         return
       }
 
-      // 🔹 STEP 1: Get student record
-      const { data: student, error: studentError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('email', authSession.user.email)
-        .single()
+      // STEP 1 — Get student
+      const { data: student, error: studentError } =
+        await supabase
+          .from('students')
+          .select('id')
+          .eq('email', authSession.user.email)
+          .single()
 
       if (studentError || !student) {
         alert('Student record not found')
@@ -46,13 +47,14 @@ export default function ExamReview() {
         return
       }
 
-      // 🔹 STEP 2: Get exam session
-      const { data: sess, error: sessionError } = await supabase
-        .from('exam_sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .eq('student_id', student.id)
-        .single()
+      // STEP 2 — Get session
+      const { data: sess, error: sessionError } =
+        await supabase
+          .from('exam_sessions')
+          .select('*')
+          .eq('id', sessionId)
+          .eq('student_id', student.id)
+          .single()
 
       if (sessionError || !sess) {
         alert('Session not found')
@@ -62,46 +64,49 @@ export default function ExamReview() {
 
       setSession(sess)
 
-      // 🔹 STEP 3: Load exam info
+      // STEP 3 — Get exam
       if (sess.exam_id) {
-        const { data: examData } = await supabase
-          .from('exams')
-          .select('*')
-          .eq('id', sess.exam_id)
-          .single()
+        const { data: examData } =
+          await supabase
+            .from('exams')
+            .select('*')
+            .eq('id', sess.exam_id)
+            .single()
 
         setExam(examData)
       }
 
-      // 🔹 STEP 4: Load questions
-let answers = sess.answers || {}
+      // STEP 4 — Load questions
 
-if (typeof answers === 'string') {
-  try {
-    answers = JSON.parse(answers)
-  } catch (e) {
-    console.error('Answers JSON parse failed', e)
-    answers = {}
-  }
-}
+      let answers = sess.answers || {}
 
-const questionIds = Object.keys(answers).filter(
-  k => k !== '__meta'
-)
+      // Fix when answers stored as JSON string
+      if (typeof answers === 'string') {
+        try {
+          answers = JSON.parse(answers)
+        } catch {
+          answers = {}
+        }
+      }
+
+      const questionIds =
+        Object.keys(answers).filter(k => k !== '__meta')
 
       if (questionIds.length > 0) {
 
-        const { data: qs } = await supabase
-          .from('question_bank')
-          .select('*')
-          .in('id', questionIds)
+        const { data: qs } =
+          await supabase
+            .from('question_bank')
+            .select('*')
+            .in('id', questionIds)
 
-        // ✅ FIX 2 — maintain same order as answered
-const orderedQuestions = questionIds
-  .map(id => qs?.find(q => q.id === id))
-  .filter(Boolean)
+        const ordered =
+          questionIds
+            .map(id => qs?.find(q => q.id === id))
+            .filter(Boolean)
 
-setQuestions(orderedQuestions)
+        setQuestions(ordered)
+      }
 
       setLoading(false)
 
@@ -112,7 +117,8 @@ setQuestions(orderedQuestions)
     }
   }
 
-  if (loading) return <p style={{ padding: 40 }}>Loading review…</p>
+  if (loading)
+    return <p style={{ padding: 40 }}>Loading review…</p>
 
   const meta = session.answers?.__meta || {}
   const isPractice = meta.type === 'CUSTOM_TEST'
@@ -134,7 +140,7 @@ setQuestions(orderedQuestions)
           </h3>
 
           <p style={{ color: '#7f1d1d' }}>
-            Your score has been cancelled due to suspected malpractice during proctored examination.
+            Your score has been cancelled due to suspected malpractice during proctored examination. Please contact your incharge
           </p>
 
           {session.rejection_reason && (
@@ -174,7 +180,8 @@ setQuestions(orderedQuestions)
 
             {['A','B','C','D'].map(opt => {
 
-              const text = q[`option_${opt.toLowerCase()}`]
+              const text =
+                q[`option_${opt.toLowerCase()}`]
 
               let bg = '#fff'
               let color = '#333'
@@ -210,15 +217,15 @@ setQuestions(orderedQuestions)
 
       <button
         style={styles.backBtn}
-        onClick={() => window.location.href = '/dashboard'}
+        onClick={() =>
+          window.location.href = '/dashboard'
+        }
       >
         Back to Dashboard
       </button>
     </div>
   )
 }
-
-/* ================= STYLES ================= */
 
 const styles = {
   page: {
