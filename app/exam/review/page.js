@@ -15,14 +15,15 @@ export default function ExamReview() {
 
   async function init() {
     try {
-      const { data: auth } = await supabase.auth.getUser()
 
-      if (!auth?.user) {
+      // ✅ FIX 1 — use session instead of getUser
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+
+      if (!authSession?.user) {
         window.location.href = '/'
         return
       }
-//console.log("Auth user:", auth.user)
-//console.log("Session ID from URL:", sessionId)
+
       const params = new URLSearchParams(window.location.search)
       const sessionId = params.get('sessionId')
 
@@ -36,9 +37,9 @@ export default function ExamReview() {
       const { data: student, error: studentError } = await supabase
         .from('students')
         .select('id')
-        .eq('email', auth.user.email)
+        .eq('email', authSession.user.email)
         .single()
-//console.log("Student record:", student)
+
       if (studentError || !student) {
         alert('Student record not found')
         window.location.href = '/dashboard'
@@ -52,8 +53,7 @@ export default function ExamReview() {
         .eq('id', sessionId)
         .eq('student_id', student.id)
         .single()
-//console.log("Session record:", sess)
-//console.log("Session error:", sessionError)
+
       if (sessionError || !sess) {
         alert('Session not found')
         window.location.href = '/dashboard'
@@ -62,7 +62,7 @@ export default function ExamReview() {
 
       setSession(sess)
 
-      // 🔹 STEP 3: Load exam details (if regular exam)
+      // 🔹 STEP 3: Load exam info
       if (sess.exam_id) {
         const { data: examData } = await supabase
           .from('exams')
@@ -73,22 +73,30 @@ export default function ExamReview() {
         setExam(examData)
       }
 
-      // 🔹 STEP 4: Load question details
+      // 🔹 STEP 4: Load questions
       const answers = sess.answers || {}
+
       const questionIds = Object.keys(answers).filter(
         k => k !== '__meta'
       )
 
       if (questionIds.length > 0) {
+
         const { data: qs } = await supabase
           .from('question_bank')
           .select('*')
           .in('id', questionIds)
 
-        setQuestions(qs || [])
+        // ✅ FIX 2 — maintain same order as answered
+        const ordered = questionIds
+          .map(id => qs?.find(q => q.id === id))
+          .filter(Boolean)
+
+        setQuestions(ordered)
       }
 
       setLoading(false)
+
     } catch (err) {
       console.error('Review Error:', err)
       alert('Something went wrong')
@@ -104,27 +112,30 @@ export default function ExamReview() {
   return (
     <div style={styles.page}>
       <h1>📘 Exam Review</h1>
+
       {session?.proctor_status === 'REJECTED' && (
-  <div style={{
-    background: '#fee2e2',
-    border: '1px solid #dc2626',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20
-  }}>
-    <h3 style={{ color: '#991b1b', marginBottom: 8 }}>
-      ⚠️ Attempt Cancelled by Admin
-    </h3>
-    <p style={{ color: '#7f1d1d' }}>
-      Your score has been cancelled due to suspected malpractice during proctored examination. Please contact your incharge
-    </p>
-    {session.rejection_reason && (
-      <p style={{ marginTop: 6, fontStyle: 'italic' }}>
-        Reason: {session.rejection_reason}
-      </p>
-    )}
-  </div>
-)}
+        <div style={{
+          background: '#fee2e2',
+          border: '1px solid #dc2626',
+          padding: 16,
+          borderRadius: 12,
+          marginBottom: 20
+        }}>
+          <h3 style={{ color: '#991b1b', marginBottom: 8 }}>
+            ⚠️ Attempt Cancelled by Admin
+          </h3>
+
+          <p style={{ color: '#7f1d1d' }}>
+            Your score has been cancelled due to suspected malpractice during proctored examination.
+          </p>
+
+          {session.rejection_reason && (
+            <p style={{ marginTop: 6, fontStyle: 'italic' }}>
+              Reason: {session.rejection_reason}
+            </p>
+          )}
+        </div>
+      )}
 
       <div style={styles.metaBox}>
         {isPractice ? (
@@ -143,6 +154,7 @@ export default function ExamReview() {
       </div>
 
       {questions.map((q, index) => {
+
         const your = session.answers[q.id]
         const correct = q.correct_answer
 
@@ -153,7 +165,9 @@ export default function ExamReview() {
             </p>
 
             {['A','B','C','D'].map(opt => {
+
               const text = q[`option_${opt.toLowerCase()}`]
+
               let bg = '#fff'
               let color = '#333'
 
@@ -205,6 +219,7 @@ const styles = {
     background: '#f8fafc',
     fontFamily: 'system-ui, sans-serif'
   },
+
   metaBox: {
     background: '#fff',
     padding: 20,
@@ -212,6 +227,7 @@ const styles = {
     marginBottom: 30,
     boxShadow: '0 6px 16px rgba(0,0,0,0.06)'
   },
+
   card: {
     background: '#fff',
     padding: 18,
@@ -219,6 +235,7 @@ const styles = {
     marginBottom: 18,
     boxShadow: '0 6px 16px rgba(0,0,0,0.06)'
   },
+
   backBtn: {
     marginTop: 30,
     padding: '12px 20px',
