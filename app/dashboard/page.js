@@ -28,12 +28,11 @@ export default function StudentDashboard() {
     return () => window.removeEventListener('focus', onFocus)
   }, [user, category])
 
-  async function init() {
-    const { data } = await supabase.auth.getUser()
-    if (!data.user) {
-      window.location.href = '/'
-      return
-    }
+const { data: { session } } = await supabase.auth.getSession()
+
+if (!session) {
+  window.location.href = '/'
+}
 
     await ensureStudentProfile(data.user)
 
