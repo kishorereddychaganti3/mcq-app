@@ -28,28 +28,34 @@ export default function StudentDashboard() {
     return () => window.removeEventListener('focus', onFocus)
   }, [user, category])
 
-  async function init() {
-    const { data } = await supabase.auth.getUser()
-    if (!data.user) {
-      window.location.href = '/'
-      return
-    }
+ async function init() {
 
-    await ensureStudentProfile(data.user)
+  const { data: { session } } = await supabase.auth.getSession()
 
-    const params = new URLSearchParams(window.location.search)
-    const cat = params.get('category')
-    if (!cat) {
-      window.location.href = '/select-category'
-      return
-    }
-
-    setUser(data.user)
-    setCategory(cat)
-
-    await refreshData(data.user.id, cat)
-    setLoading(false)
+  if (!session) {
+    window.location.href = '/'
+    return
   }
+
+  const user = session.user
+
+  await ensureStudentProfile(user)
+
+  const params = new URLSearchParams(window.location.search)
+  const cat = params.get('category')
+
+  if (!cat) {
+    window.location.href = '/select-category'
+    return
+  }
+
+  setUser(user)
+  setCategory(cat)
+
+  await refreshData(user.id, cat)
+
+  setLoading(false)
+}
 
   async function refreshData(studentId, cat) {
     await Promise.all([
