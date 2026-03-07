@@ -26,7 +26,8 @@ export default function ExamReview() {
 
       const params = new URLSearchParams(window.location.search)
       const sessionId = params.get('sessionId')
-
+console.log("SESSION DATA:", sess)
+console.log("RAW ANSWERS:", sess.answers)
       if (!sessionId) {
         alert('Invalid review request')
         window.location.href = '/dashboard'
@@ -84,13 +85,18 @@ export default function ExamReview() {
       if (typeof answers === 'string') {
         try {
           answers = JSON.parse(answers)
-        } catch {
-          answers = {}
+        } 
+          catch (e) {
+    console.error("JSON parse failed:", e)
+    //      answers = {}
         }
       }
 
-      const questionIds =
-        Object.keys(answers).filter(k => k !== '__meta')
+console.log("PARSED ANSWERS:", answers)
+
+const questionIds = Object.keys(answers).filter(k => k !== '__meta')
+
+console.log("QUESTION IDS:", questionIds)
 
       if (questionIds.length > 0) {
 
@@ -99,7 +105,7 @@ export default function ExamReview() {
             .from('question_bank')
             .select('*')
             .in('id', questionIds)
-
+console.log("QUESTIONS FROM DB:", qs)
         const ordered =
           questionIds
             .map(id => qs?.find(q => q.id === id))
