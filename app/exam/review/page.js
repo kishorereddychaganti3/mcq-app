@@ -112,33 +112,26 @@ export default function ExamReview() {
         }
       }
 
-      const questionIds =
-        Object.keys(answers).filter(k => k !== '__meta')
+    const { data: mappings } =
+  await supabase
+    .from('exam_questions')
+    .select('question_id')
+    .eq('exam_id', sess.exam_id)
 
-      console.log("QUESTION IDS:", questionIds)
+const ids = mappings?.map(m => m.question_id) || []
 
-      /* ================= QUESTIONS ================= */
+console.log("QUESTION IDS FROM MAPPING:", ids)
 
-      if (questionIds.length > 0) {
+if (ids.length > 0) {
 
-        const { data: qs, error: qError } =
-          await supabase
-            .from('question_bank')
-            .select('*')
-            .in('id', questionIds)
+  const { data: qs } =
+    await supabase
+      .from('question_bank')
+      .select('*')
+      .in('id', ids)
 
-        console.log("QUESTIONS FROM DB:", qs)
-        console.log("QUESTION ERROR:", qError)
-
-        const orderedQuestions =
-          questionIds
-            .map(id => qs?.find(q => q.id === id))
-            .filter(Boolean)
-
-        console.log("ORDERED QUESTIONS:", orderedQuestions)
-
-        setQuestions(orderedQuestions)
-      }
+  setQuestions(qs || [])
+}
 
       setLoading(false)
 
