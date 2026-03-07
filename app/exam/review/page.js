@@ -18,7 +18,7 @@ export default function ExamReview() {
 
     try {
 
-      console.log("🚀 Review page init started")
+      console.log("===== REVIEW INIT =====")
 
       const { data: { session: authSession } } =
         await supabase.auth.getSession()
@@ -26,7 +26,6 @@ export default function ExamReview() {
       console.log("AUTH SESSION:", authSession)
 
       if (!authSession?.user) {
-        console.log("❌ No user session")
         alert("Not logged in")
         return
       }
@@ -34,16 +33,16 @@ export default function ExamReview() {
       const params = new URLSearchParams(window.location.search)
       const sessionId = params.get('sessionId')
 
-      console.log("SESSION ID FROM URL:", sessionId)
+      console.log("SESSION ID:", sessionId)
 
       if (!sessionId) {
-        alert('Invalid review request')
+        alert("Invalid review request")
         return
       }
 
       /* ================= STUDENT ================= */
 
-      const { data: student, error: studentError } =
+      const { data: student } =
         await supabase
           .from('students')
           .select('id,email')
@@ -51,28 +50,20 @@ export default function ExamReview() {
           .single()
 
       console.log("STUDENT:", student)
-      console.log("STUDENT ERROR:", studentError)
-
-      if (studentError || !student) {
-        alert('Student record not found')
-        return
-      }
 
       /* ================= SESSION ================= */
 
-      const { data: sess, error: sessionError } =
+      const { data: sess } =
         await supabase
           .from('exam_sessions')
           .select('*')
           .eq('id', sessionId)
-          .eq('student_id', student.id)
           .single()
 
       console.log("SESSION DATA:", sess)
-      console.log("SESSION ERROR:", sessionError)
 
-      if (sessionError || !sess) {
-        alert('Session not found')
+      if (!sess) {
+        alert("Session not found")
         return
       }
 
@@ -101,45 +92,80 @@ export default function ExamReview() {
       console.log("RAW ANSWERS:", answers)
 
       if (typeof answers === 'string') {
-
         try {
           answers = JSON.parse(answers)
-          console.log("PARSED ANSWERS:", answers)
-        }
-        catch (err) {
-          console.error("❌ JSON PARSE ERROR", err)
-          answers = {}
+        } catch (err) {
+          console.error("JSON PARSE ERROR", err)
         }
       }
 
-    const { data: mappings } =
-  await supabase
-    .from('exam_questions')
-    .select('question_id')
-    .eq('exam_id', sess.exam_id)
+      const answerQuestionIds =
+        Object.keys(answers).filter(k => k !== '__meta')
 
-const ids = mappings?.map(m => m.question_id) || []
+      console.log("ANSWER QUESTION IDS:", answerQuestionIds)
 
-console.log("QUESTION IDS FROM MAPPING:", ids)
+      /* ================= ADMIN EXAM ================= */
 
-if (ids.length > 0) {
+      if (sess.exam_id) {
 
-  const { data: qs } =
-    await supabase
-      .from('question_bank')
-      .select('*')
-      .in('id', ids)
+        const { data: mappings } =
+          await supabase
+            .from('exam_questions')
+            .select('question_id')
+            .eq('exam_id', sess.exam_id)
 
-  setQuestions(qs || [])
-}
+        const ids = mappings?.map(m => m.question_id) || []
+
+        console.log("MAPPED QUESTION IDS:", ids)
+
+        if (ids.length > 0) {
+
+          const { data: qs } =
+            await supabase
+              .from('question_bank')
+              .select('*')
+              .in('id', ids)
+
+          console.log("QUESTIONS FROM DB:", qs)
+
+          setQuestions(qs || [])
+        }
+
+      }
+
+      /* ================= CUSTOM TEST ================= */
+
+      else {
+
+        console.log("CUSTOM TEST DETECTED")
+
+        if (answerQuestionIds.length > 0) {
+
+          const { data: qs } =
+            await supabase
+              .from('question_bank')
+              .select('*')
+              .in('id', answerQuestionIds)
+
+          console.log("CUSTOM QUESTIONS:", qs)
+
+          const ordered =
+            answerQuestionIds
+              .map(id => qs?.find(q => q.id === id))
+              .filter(Boolean)
+
+          setQuestions(ordered)
+        }
+
+      }
 
       setLoading(false)
 
     }
     catch (err) {
 
-      console.error("🔥 REVIEW PAGE ERROR:", err)
-      alert("Check browser console (F12)")
+      console.error("REVIEW PAGE ERROR:", err)
+      alert("Check console")
 
     }
 
@@ -155,34 +181,6 @@ if (ids.length > 0) {
     <div style={styles.page}>
 
       <h1>📘 Exam Review</h1>
-
-      {session?.proctor_status === 'REJECTED' && (
-
-        <div style={{
-          background: '#fee2e2',
-          border: '1px solid #dc2626',
-          padding: 16,
-          borderRadius: 12,
-          marginBottom: 20
-        }}>
-
-          <h3 style={{ color: '#991b1b', marginBottom: 8 }}>
-            ⚠️ Attempt Cancelled by Admin
-          </h3>
-
-          <p style={{ color: '#7f1d1d' }}>
-            Your score has been cancelled due to suspected malpractice during proctored examination.
-          </p>
-
-          {session.rejection_reason && (
-            <p style={{ marginTop: 6, fontStyle: 'italic' }}>
-              Reason: {session.rejection_reason}
-            </p>
-          )}
-
-        </div>
-
-      )}
 
       <div style={styles.metaBox}>
 
@@ -208,7 +206,6 @@ if (ids.length > 0) {
         const correct = q.correct_answer
 
         return (
-
           <div key={q.id} style={styles.card}>
 
             <p style={{ fontWeight: 600 }}>
@@ -234,7 +231,6 @@ if (ids.length > 0) {
               }
 
               return (
-
                 <div
                   key={opt}
                   style={{
@@ -247,22 +243,18 @@ if (ids.length > 0) {
                 >
                   {opt}. {text}
                 </div>
-
               )
 
             })}
 
           </div>
-
         )
 
       })}
 
       <button
         style={styles.backBtn}
-        onClick={() =>
-          window.location.href = '/dashboard'
-        }
+        onClick={() => window.location.href = '/dashboard'}
       >
         Back to Dashboard
       </button>
