@@ -134,7 +134,12 @@ export default function ExamInstructions({ params }) {
           <li>Timer will not reset on refresh.</li>
           <li>Do not close the browser during the exam.</li>
           <li>Each question has only one correct answer.</li>
-          <li>No negative marking (for now).</li>
+          <li>Marking Scheme as follows</li>
+            <li>✔ Correct Answer: +4 marks  </li>
+<li>✖ Wrong Answer: -1 mark  </li>
+<li>➖ Unattempted Question: 0 marks  </li>
+
+<li>Total Score = (Correct × 4) − (Wrong × 1)</li>
         </ul>
 
         {exam.camera_required && (
