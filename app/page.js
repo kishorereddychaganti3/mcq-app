@@ -7,7 +7,7 @@ export default function StudentLogin() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/select-category'
+        redirectTo: window.location.origin + '/auth/callback'
       }
     })
   }
