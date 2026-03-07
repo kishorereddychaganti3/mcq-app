@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase'
 import { useEffect, useState } from 'react'
 
 export default function ExamReview() {
+
   const [session, setSession] = useState(null)
   const [questions, setQuestions] = useState([])
   const [exam, setExam] = useState(null)
@@ -14,41 +15,51 @@ export default function ExamReview() {
   }, [])
 
   async function init() {
+
     try {
+
+      console.log("🚀 Review page init started")
 
       const { data: { session: authSession } } =
         await supabase.auth.getSession()
 
+      console.log("AUTH SESSION:", authSession)
+
       if (!authSession?.user) {
-        window.location.href = '/'
+        console.log("❌ No user session")
+        alert("Not logged in")
         return
       }
 
       const params = new URLSearchParams(window.location.search)
       const sessionId = params.get('sessionId')
-console.log("SESSION DATA:", sess)
-console.log("RAW ANSWERS:", sess.answers)
+
+      console.log("SESSION ID FROM URL:", sessionId)
+
       if (!sessionId) {
         alert('Invalid review request')
-        window.location.href = '/dashboard'
         return
       }
 
-      // STEP 1 — Get student
+      /* ================= STUDENT ================= */
+
       const { data: student, error: studentError } =
         await supabase
           .from('students')
-          .select('id')
+          .select('id,email')
           .eq('email', authSession.user.email)
           .single()
 
+      console.log("STUDENT:", student)
+      console.log("STUDENT ERROR:", studentError)
+
       if (studentError || !student) {
         alert('Student record not found')
-        window.location.href = '/dashboard'
         return
       }
 
-      // STEP 2 — Get session
+      /* ================= SESSION ================= */
+
       const { data: sess, error: sessionError } =
         await supabase
           .from('exam_sessions')
@@ -57,16 +68,20 @@ console.log("RAW ANSWERS:", sess.answers)
           .eq('student_id', student.id)
           .single()
 
+      console.log("SESSION DATA:", sess)
+      console.log("SESSION ERROR:", sessionError)
+
       if (sessionError || !sess) {
         alert('Session not found')
-        window.location.href = '/dashboard'
         return
       }
 
       setSession(sess)
 
-      // STEP 3 — Get exam
+      /* ================= EXAM ================= */
+
       if (sess.exam_id) {
+
         const { data: examData } =
           await supabase
             .from('exams')
@@ -74,53 +89,67 @@ console.log("RAW ANSWERS:", sess.answers)
             .eq('id', sess.exam_id)
             .single()
 
+        console.log("EXAM DATA:", examData)
+
         setExam(examData)
       }
 
-      // STEP 4 — Load questions
+      /* ================= ANSWERS ================= */
 
       let answers = sess.answers || {}
 
-      // Fix when answers stored as JSON string
+      console.log("RAW ANSWERS:", answers)
+
       if (typeof answers === 'string') {
+
         try {
           answers = JSON.parse(answers)
-        } 
-          catch (e) {
-    console.error("JSON parse failed:", e)
-    //      answers = {}
+          console.log("PARSED ANSWERS:", answers)
+        }
+        catch (err) {
+          console.error("❌ JSON PARSE ERROR", err)
+          answers = {}
         }
       }
 
-console.log("PARSED ANSWERS:", answers)
+      const questionIds =
+        Object.keys(answers).filter(k => k !== '__meta')
 
-const questionIds = Object.keys(answers).filter(k => k !== '__meta')
+      console.log("QUESTION IDS:", questionIds)
 
-console.log("QUESTION IDS:", questionIds)
+      /* ================= QUESTIONS ================= */
 
       if (questionIds.length > 0) {
 
-        const { data: qs } =
+        const { data: qs, error: qError } =
           await supabase
             .from('question_bank')
             .select('*')
             .in('id', questionIds)
-console.log("QUESTIONS FROM DB:", qs)
-        const ordered =
+
+        console.log("QUESTIONS FROM DB:", qs)
+        console.log("QUESTION ERROR:", qError)
+
+        const orderedQuestions =
           questionIds
             .map(id => qs?.find(q => q.id === id))
             .filter(Boolean)
 
-        setQuestions(ordered)
+        console.log("ORDERED QUESTIONS:", orderedQuestions)
+
+        setQuestions(orderedQuestions)
       }
 
       setLoading(false)
 
-    } catch (err) {
-      console.error('Review Error:', err)
-      alert('Something went wrong')
-      window.location.href = '/dashboard'
     }
+    catch (err) {
+
+      console.error("🔥 REVIEW PAGE ERROR:", err)
+      alert("Check browser console (F12)")
+
+    }
+
   }
 
   if (loading)
@@ -131,9 +160,11 @@ console.log("QUESTIONS FROM DB:", qs)
 
   return (
     <div style={styles.page}>
+
       <h1>📘 Exam Review</h1>
 
       {session?.proctor_status === 'REJECTED' && (
+
         <div style={{
           background: '#fee2e2',
           border: '1px solid #dc2626',
@@ -141,12 +172,13 @@ console.log("QUESTIONS FROM DB:", qs)
           borderRadius: 12,
           marginBottom: 20
         }}>
+
           <h3 style={{ color: '#991b1b', marginBottom: 8 }}>
             ⚠️ Attempt Cancelled by Admin
           </h3>
 
           <p style={{ color: '#7f1d1d' }}>
-            Your score has been cancelled due to suspected malpractice during proctored examination. Please contact your incharge
+            Your score has been cancelled due to suspected malpractice during proctored examination.
           </p>
 
           {session.rejection_reason && (
@@ -154,10 +186,13 @@ console.log("QUESTIONS FROM DB:", qs)
               Reason: {session.rejection_reason}
             </p>
           )}
+
         </div>
+
       )}
 
       <div style={styles.metaBox}>
+
         {isPractice ? (
           <>
             <p><b>Subject:</b> {meta.subject}</p>
@@ -171,6 +206,7 @@ console.log("QUESTIONS FROM DB:", qs)
             <p><b>Score:</b> {session.score}</p>
           </>
         )}
+
       </div>
 
       {questions.map((q, index) => {
@@ -179,7 +215,9 @@ console.log("QUESTIONS FROM DB:", qs)
         const correct = q.correct_answer
 
         return (
+
           <div key={q.id} style={styles.card}>
+
             <p style={{ fontWeight: 600 }}>
               Q{index + 1}. {q.question}
             </p>
@@ -203,6 +241,7 @@ console.log("QUESTIONS FROM DB:", qs)
               }
 
               return (
+
                 <div
                   key={opt}
                   style={{
@@ -215,10 +254,15 @@ console.log("QUESTIONS FROM DB:", qs)
                 >
                   {opt}. {text}
                 </div>
+
               )
+
             })}
+
           </div>
+
         )
+
       })}
 
       <button
@@ -229,11 +273,13 @@ console.log("QUESTIONS FROM DB:", qs)
       >
         Back to Dashboard
       </button>
+
     </div>
   )
 }
 
 const styles = {
+
   page: {
     padding: 40,
     minHeight: '100vh',
@@ -268,4 +314,5 @@ const styles = {
     fontWeight: 600,
     cursor: 'pointer'
   }
+
 }
