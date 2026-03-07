@@ -312,9 +312,20 @@ function stopProctoring() {
     stopProctoring()
 
     let score = 0
-    questions.forEach(q => {
-      if (answers[q.id] === q.correct_answer) score++
-    })
+
+questions.forEach(q => {
+
+  const studentAnswer = answers[q.id]
+
+  if (!studentAnswer) return
+
+  if (studentAnswer === q.correct_answer) {
+    score += exam.correct_marks || 4
+  } else {
+    score -= exam.negative_marks || 1
+  }
+
+})
 
     setFinalScore(score)
 
