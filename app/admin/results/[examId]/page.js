@@ -124,8 +124,8 @@ export default function ExamAnalyticsPage() {
 
   submitted.forEach(s => {
     const totalQ = Object.keys(s.answers || {}).length || 1
-    const percent = (s.score / totalQ) * 100
-
+const maxScore = totalQ * (exam.correct_marks || 4)
+const percent = (s.score / maxScore) * 100
     if (percent <= 25) buckets['0-25']++
     else if (percent <= 50) buckets['26-50']++
     else if (percent <= 75) buckets['51-75']++
