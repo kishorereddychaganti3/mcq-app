@@ -74,11 +74,20 @@ export default function ExamReview() {
       }
 
       // 🔹 STEP 4: Load questions
-      const answers = sess.answers || {}
+let answers = sess.answers || {}
 
-      const questionIds = Object.keys(answers).filter(
-        k => k !== '__meta'
-      )
+if (typeof answers === 'string') {
+  try {
+    answers = JSON.parse(answers)
+  } catch (e) {
+    console.error('Answers JSON parse failed', e)
+    answers = {}
+  }
+}
+
+const questionIds = Object.keys(answers).filter(
+  k => k !== '__meta'
+)
 
       if (questionIds.length > 0) {
 
@@ -88,12 +97,11 @@ export default function ExamReview() {
           .in('id', questionIds)
 
         // ✅ FIX 2 — maintain same order as answered
-        const ordered = questionIds
-          .map(id => qs?.find(q => q.id === id))
-          .filter(Boolean)
+const orderedQuestions = questionIds
+  .map(id => qs?.find(q => q.id === id))
+  .filter(Boolean)
 
-        setQuestions(ordered)
-      }
+setQuestions(orderedQuestions)
 
       setLoading(false)
 
