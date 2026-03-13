@@ -78,7 +78,11 @@ export default function UploadQuestionsPage() {
     const rowErrors = []
 
     REQUIRED_COLUMNS.forEach(col => {
-      if (!row[col] || String(row[col]).trim() === '') {
+      if (
+  row[col] === undefined ||
+  row[col] === null ||
+  String(row[col]).trim() === ''
+) {
         rowErrors.push(`Row ${index + 2}: Missing "${col}"`)
       }
     })
