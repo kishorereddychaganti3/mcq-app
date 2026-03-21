@@ -6,16 +6,20 @@ import { useEffect, useState } from 'react'
 export default function SelectCategory() {
 
   const [examPref, setExamPref] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    checkUser()
+    init()
   }, [])
 
-  async function checkUser() {
+  async function init() {
+
+    // ✅ wait for session hydration (CRITICAL FIX)
+    await new Promise(r => setTimeout(r, 500))
 
     const { data } = await supabase.auth.getUser()
 
-    if (!data.user) {
+    if (!data?.user) {
       window.location.href = '/'
       return
     }
@@ -31,6 +35,8 @@ export default function SelectCategory() {
     if (student?.exam_preference) {
       setExamPref(student.exam_preference)
     }
+
+    setLoading(false)
   }
 
   function go(cat) {
@@ -44,6 +50,14 @@ export default function SelectCategory() {
   async function logout() {
     await supabase.auth.signOut()
     window.location.href = '/'
+  }
+
+  if (loading) {
+    return (
+      <div style={styles.page}>
+        <div>Loading...</div>
+      </div>
+    )
   }
 
   return (
@@ -62,7 +76,6 @@ export default function SelectCategory() {
 
         <h1>Welcome to MCQ Platform 🚀</h1>
 
-        {/* ✅ NEW CONTENT */}
         <p style={{ color: '#555', marginBottom: 20 }}>
           Practice high-quality MCQs, track your performance, and improve your rank with real exam-level questions.
         </p>
@@ -71,8 +84,7 @@ export default function SelectCategory() {
           Showing exams for: {examPref === 'NEET' ? 'NEET UG' : 'JEE'}
         </p>
 
-        {/* ✅ SHOW ONLY RELEVANT EXAMS */}
-
+        {/* ✅ JEE */}
         {examPref === 'JEE' && (
           <>
             <button
@@ -91,6 +103,7 @@ export default function SelectCategory() {
           </>
         )}
 
+        {/* ✅ NEET */}
         {examPref === 'NEET' && (
           <button
             style={{ ...styles.btn, background: '#16a34a' }}
