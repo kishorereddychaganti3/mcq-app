@@ -262,36 +262,46 @@ export default function UploadQuestionsPage() {
       )}
 
       {/* ✅ PREVIEW TABLE */}
-      {isPreview && previewRows.length > 0 && (
-        <div style={styles.previewBox}>
-          <h3>Preview (First 20 rows)</h3>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th>Q</th>
-                <th>A</th>
-                <th>B</th>
-                <th>C</th>
-                <th>D</th>
-                <th>Ans</th>
-              </tr>
-            </thead>
-            <tbody>
-              {previewRows.slice(0, 20).map((row, i) => (
-                <tr key={i}>
-                  <td>{row.question}</td>
-                  <td>{row.option_a}</td>
-                  <td>{row.option_b}</td>
-                  <td>{row.option_c}</td>
-                  <td>{row.option_d}</td>
-                  <td>{row.correct_answer}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      
+{isPreview && previewRows.length > 0 && (
+  <div style={styles.previewBox}>
+    <h3>Preview ({previewRows.length} questions)</h3>
 
+    <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+      <table style={styles.table}>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Question</th>
+            <th>A</th>
+            <th>B</th>
+            <th>C</th>
+            <th>D</th>
+            <th>Ans</th>
+            <th>Difficulty</th>
+            <th>Explanation</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {previewRows.map((row, i) => (
+            <tr key={i}>
+              <td>{i + 1}</td>
+              <td>{row.question}</td>
+              <td>{row.option_a}</td>
+              <td>{row.option_b}</td>
+              <td>{row.option_c}</td>
+              <td>{row.option_d}</td>
+              <td>{row.correct_answer}</td>
+              <td>{row.difficulty}</td>
+              <td>{row.explanation}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
       {errors.length > 0 && (
         <div style={styles.errorBox}>
           <ul>
