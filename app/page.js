@@ -1,8 +1,36 @@
 'use client'
 
 import { supabase } from '../lib/supabase'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function StudentLogin() {
+
+  const router = useRouter()
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    checkUser()
+  }, [])
+
+  async function checkUser() {
+
+    console.log("🟡 LOGIN PAGE CHECK")
+
+    await new Promise(r => setTimeout(r, 500))
+
+    const { data } = await supabase.auth.getUser()
+
+    console.log("🟡 LOGIN USER:", data)
+
+    if (data?.user) {
+      console.log("🟡 ALREADY LOGGED IN → redirecting")
+      router.replace('/select-category')
+    } else {
+      setChecking(false)
+    }
+  }
+
   async function loginWithGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -10,6 +38,14 @@ export default function StudentLogin() {
         redirectTo: window.location.origin + '/auth/callback'
       }
     })
+  }
+
+  if (checking) {
+    return (
+      <div style={styles.page}>
+        <div>Checking login...</div>
+      </div>
+    )
   }
 
   return (
