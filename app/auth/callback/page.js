@@ -2,8 +2,11 @@
 
 import { supabase } from '../../../lib/supabase'
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function AuthCallback() {
+
+  const router = useRouter()
 
   useEffect(() => {
     handleAuth()
@@ -11,59 +14,29 @@ export default function AuthCallback() {
 
   async function handleAuth() {
 
-    // ✅ Wait until auth state is READY
-    const {
-      data: { subscription }
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // ✅ small delay allows session to hydrate
+    await new Promise(r => setTimeout(r, 500))
 
-      if (event === 'SIGNED_IN' && session) {
+    const { data: userData } = await supabase.auth.getUser()
 
-        const email = session.user.email
+    if (!userData?.user) {
+      router.replace('/')
+      return
+    }
 
-        // ✅ Check student
-        const { data: student } = await supabase
-          .from('students')
-          .select('exam_preference')
-          .eq('email', email)
-          .single()
+    const email = userData.user.email
 
-        if (!student || !student.exam_preference) {
-          window.location.href = '/signup'
-        } else {
-          window.location.href = '/select-category'
-        }
+    const { data: student } = await supabase
+      .from('students')
+      .select('exam_preference')
+      .eq('email', email)
+      .single()
 
-        // 🔥 Important: unsubscribe after use
-        subscription.unsubscribe()
-      }
-
-    })
-
-    // 🛑 fallback (in case event doesn't fire)
-    setTimeout(async () => {
-
-      const { data: userData } = await supabase.auth.getUser()
-
-      if (userData?.user) {
-
-        const email = userData.user.email
-
-        const { data: student } = await supabase
-          .from('students')
-          .select('exam_preference')
-          .eq('email', email)
-          .single()
-
-        if (!student || !student.exam_preference) {
-          window.location.href = '/signup'
-        } else {
-          window.location.href = '/select-category'
-        }
-
-      }
-
-    }, 1500)
-
+    if (!student || !student.exam_preference) {
+      router.replace('/signup')
+    } else {
+      router.replace('/select-category')
+    }
   }
 
   return (
