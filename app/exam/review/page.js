@@ -18,12 +18,8 @@ export default function ExamReview() {
 
     try {
 
-      console.log("===== REVIEW INIT =====")
-
       const { data: { session: authSession } } =
         await supabase.auth.getSession()
-
-      console.log("AUTH SESSION:", authSession)
 
       if (!authSession?.user) {
         alert("Not logged in")
@@ -33,14 +29,10 @@ export default function ExamReview() {
       const params = new URLSearchParams(window.location.search)
       const sessionId = params.get('sessionId')
 
-      console.log("SESSION ID:", sessionId)
-
       if (!sessionId) {
         alert("Invalid review request")
         return
       }
-
-      /* ================= STUDENT ================= */
 
       const { data: student } =
         await supabase
@@ -49,18 +41,12 @@ export default function ExamReview() {
           .eq('email', authSession.user.email)
           .single()
 
-      console.log("STUDENT:", student)
-
-      /* ================= SESSION ================= */
-
       const { data: sess } =
         await supabase
           .from('exam_sessions')
           .select('*')
           .eq('id', sessionId)
           .single()
-
-      console.log("SESSION DATA:", sess)
 
       if (!sess) {
         alert("Session not found")
@@ -69,10 +55,7 @@ export default function ExamReview() {
 
       setSession(sess)
 
-      /* ================= EXAM ================= */
-
       if (sess.exam_id) {
-
         const { data: examData } =
           await supabase
             .from('exams')
@@ -80,31 +63,19 @@ export default function ExamReview() {
             .eq('id', sess.exam_id)
             .single()
 
-        console.log("EXAM DATA:", examData)
-
         setExam(examData)
       }
 
-      /* ================= ANSWERS ================= */
-
       let answers = sess.answers || {}
-
-      console.log("RAW ANSWERS:", answers)
 
       if (typeof answers === 'string') {
         try {
           answers = JSON.parse(answers)
-        } catch (err) {
-          console.error("JSON PARSE ERROR", err)
-        }
+        } catch {}
       }
 
       const answerQuestionIds =
         Object.keys(answers).filter(k => k !== '__meta')
-
-      console.log("ANSWER QUESTION IDS:", answerQuestionIds)
-
-      /* ================= ADMIN EXAM ================= */
 
       if (sess.exam_id) {
 
@@ -116,28 +87,19 @@ export default function ExamReview() {
 
         const ids = mappings?.map(m => m.question_id) || []
 
-        console.log("MAPPED QUESTION IDS:", ids)
-
         if (ids.length > 0) {
 
           const { data: qs } =
             await supabase
               .from('question_bank')
               .select('*')
-              .in('id', ids)
 
-          console.log("QUESTIONS FROM DB:", qs)
+              .in('id', ids)
 
           setQuestions(qs || [])
         }
 
-      }
-
-      /* ================= CUSTOM TEST ================= */
-
-      else {
-
-        console.log("CUSTOM TEST DETECTED")
+      } else {
 
         if (answerQuestionIds.length > 0) {
 
@@ -147,8 +109,6 @@ export default function ExamReview() {
               .select('*')
               .in('id', answerQuestionIds)
 
-          console.log("CUSTOM QUESTIONS:", qs)
-
           const ordered =
             answerQuestionIds
               .map(id => qs?.find(q => q.id === id))
@@ -156,19 +116,14 @@ export default function ExamReview() {
 
           setQuestions(ordered)
         }
-
       }
 
       setLoading(false)
 
+    } catch (err) {
+      console.error(err)
+      alert("Error loading review")
     }
-    catch (err) {
-
-      console.error("REVIEW PAGE ERROR:", err)
-      alert("Check console")
-
-    }
-
   }
 
   if (loading)
@@ -214,8 +169,7 @@ export default function ExamReview() {
 
             {['A','B','C','D'].map(opt => {
 
-              const text =
-                q[`option_${opt.toLowerCase()}`]
+              const text = q[`option_${opt.toLowerCase()}`]
 
               let bg = '#fff'
               let color = '#333'
@@ -246,6 +200,14 @@ export default function ExamReview() {
               )
 
             })}
+
+            {/* ✅ NEW: EXPLANATION BLOCK */}
+            {q.explanation && (
+              <div style={styles.explanationBox}>
+                <b>Explanation:</b>
+                <p>{q.explanation}</p>
+              </div>
+            )}
 
           </div>
         )
@@ -286,6 +248,15 @@ const styles = {
     borderRadius: 12,
     marginBottom: 18,
     boxShadow: '0 6px 16px rgba(0,0,0,0.06)'
+  },
+
+  /* ✅ NEW STYLE */
+  explanationBox: {
+    marginTop: 12,
+    padding: 12,
+    background: '#f1f5f9',
+    borderRadius: 8,
+    fontSize: 14
   },
 
   backBtn: {
