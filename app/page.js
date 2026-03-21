@@ -1,8 +1,13 @@
 'use client'
 
 import { supabase } from '../lib/supabase'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function StudentLogin() {
+
+  const router = useRouter()
+
   async function loginWithGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -10,6 +15,31 @@ export default function StudentLogin() {
         redirectTo: window.location.origin + '/auth/callback'
       }
     })
+  }
+
+  // ✅ NEW: Check user after login (when coming back from callback)
+  useEffect(() => {
+    checkUser()
+  }, [])
+
+  async function checkUser() {
+
+    const { data: userData } = await supabase.auth.getUser()
+
+    if (!userData?.user) return
+
+    const email = userData.user.email
+
+    const { data: student } = await supabase
+      .from('students')
+      .select('exam_preference')
+      .eq('email', email)
+      .single()
+
+    // 🚨 If new user OR no exam preference → go to signup
+    if (!student || !student.exam_preference) {
+      router.push('/signup')
+    }
   }
 
   return (
