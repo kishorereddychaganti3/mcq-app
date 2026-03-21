@@ -20,6 +20,7 @@ const REQUIRED_COLUMNS = [
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 
 export default function UploadQuestionsPage() {
+
   const [file, setFile] = useState(null)
   const [errors, setErrors] = useState([])
   const [summary, setSummary] = useState(null)
@@ -30,6 +31,10 @@ export default function UploadQuestionsPage() {
   const [progress, setProgress] = useState(0)
   const [toast, setToast] = useState(null)
   const [uploading, setUploading] = useState(false)
+
+  // ✅ NEW STATES
+  const [previewRows, setPreviewRows] = useState([])
+  const [isPreview, setIsPreview] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -54,19 +59,17 @@ export default function UploadQuestionsPage() {
   }
 
   function downloadTemplate() {
-    const templateData = [
-      {
-        exam_category: 'JEE MAINS',
-        subject: 'Mathematics',
-        chapter: 'Limits',
-        question: 'Sample question?',
-        option_a: 'Option A',
-        option_b: 'Option B',
-        option_c: 'Option C',
-        option_d: 'Option D',
-        correct_answer: 'A'
-      }
-    ]
+    const templateData = [{
+      exam_category: 'JEE MAINS',
+      subject: 'Mathematics',
+      chapter: 'Limits',
+      question: 'Sample question?',
+      option_a: 'Option A',
+      option_b: 'Option B',
+      option_c: 'Option C',
+      option_d: 'Option D',
+      correct_answer: 'A'
+    }]
 
     const ws = XLSX.utils.json_to_sheet(templateData)
     const wb = XLSX.utils.book_new()
@@ -79,10 +82,10 @@ export default function UploadQuestionsPage() {
 
     REQUIRED_COLUMNS.forEach(col => {
       if (
-  row[col] === undefined ||
-  row[col] === null ||
-  String(row[col]).trim() === ''
-) {
+        row[col] === undefined ||
+        row[col] === null ||
+        String(row[col]).trim() === ''
+      ) {
         rowErrors.push(`Row ${index + 2}: Missing "${col}"`)
       }
     })
@@ -91,15 +94,15 @@ export default function UploadQuestionsPage() {
       row.correct_answer &&
       !['A', 'B', 'C', 'D'].includes(String(row.correct_answer).trim())
     ) {
-      rowErrors.push(
-        `Row ${index + 2}: correct_answer must be A/B/C/D`
-      )
+      rowErrors.push(`Row ${index + 2}: correct_answer must be A/B/C/D`)
     }
 
     return rowErrors
   }
 
-  async function handleUpload() {
+  // ✅ STEP 1: PREVIEW
+  async function handlePreview() {
+
     if (!file) {
       showToast('Please select a file first.', 'error')
       return
@@ -107,22 +110,15 @@ export default function UploadQuestionsPage() {
 
     setErrors([])
     setSummary(null)
-    setStatus('')
-    setSuccessCount(0)
-    setProgress(10)
-    setUploading(true)
 
     try {
       const buffer = await file.arrayBuffer()
-      setProgress(25)
-
       const wb = XLSX.read(buffer)
       const sheet = wb.Sheets[wb.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(sheet)
 
       if (!rows || rows.length === 0) {
         showToast('Excel file is empty.', 'error')
-        setUploading(false)
         return
       }
 
@@ -132,11 +128,8 @@ export default function UploadQuestionsPage() {
       )
 
       if (missingHeaders.length > 0) {
-        setErrors(
-          missingHeaders.map(col => `Missing column: ${col}`)
-        )
+        setErrors(missingHeaders.map(col => `Missing column: ${col}`))
         showToast('Missing required columns.', 'error')
-        setUploading(false)
         return
       }
 
@@ -148,15 +141,34 @@ export default function UploadQuestionsPage() {
       if (allErrors.length > 0) {
         setErrors(allErrors)
         showToast('Validation failed.', 'error')
-        setUploading(false)
         return
       }
 
-      setProgress(50)
+      // ✅ SET PREVIEW
+      setPreviewRows(rows)
+      setIsPreview(true)
+
+    } catch (err) {
+      showToast('Invalid Excel file.', 'error')
+    }
+  }
+
+  // ✅ STEP 2: FINAL UPLOAD
+  async function handleUpload() {
+
+    if (previewRows.length === 0) {
+      showToast('No data to upload.', 'error')
+      return
+    }
+
+    setUploading(true)
+    setProgress(50)
+
+    try {
 
       const { data: inserted, error } = await supabase
         .from('question_bank')
-        .insert(rows)
+        .insert(previewRows)
         .select()
 
       if (error) {
@@ -164,8 +176,6 @@ export default function UploadQuestionsPage() {
         setUploading(false)
         return
       }
-
-      setProgress(75)
 
       if (selectedExam) {
         const mappings = inserted.map(q => ({
@@ -179,20 +189,25 @@ export default function UploadQuestionsPage() {
       setProgress(100)
 
       let summaryData = {}
-      rows.forEach(row => {
+      previewRows.forEach(row => {
         const key = `${row.exam_category} → ${row.subject} → ${row.chapter}`
         summaryData[key] = (summaryData[key] || 0) + 1
       })
 
-      setSuccessCount(rows.length)
+      setSuccessCount(previewRows.length)
       setSummary(summaryData)
       showToast('Questions uploaded successfully!')
-      setUploading(false)
+
+      // reset
+      setPreviewRows([])
+      setIsPreview(false)
+      setFile(null)
 
     } catch (err) {
-      showToast('Invalid Excel file.', 'error')
-      setUploading(false)
+      showToast('Upload failed.', 'error')
     }
+
+    setUploading(false)
   }
 
   return (
@@ -228,31 +243,59 @@ export default function UploadQuestionsPage() {
         </select>
       </div>
 
-      <button
-        style={styles.uploadBtn}
-        onClick={handleUpload}
-        disabled={uploading}
-      >
-        {uploading ? 'Uploading...' : 'Upload Questions'}
-      </button>
+      {/* ✅ PREVIEW BUTTON */}
+      {!isPreview && (
+        <button style={styles.uploadBtn} onClick={handlePreview}>
+          Preview File
+        </button>
+      )}
 
-      {uploading && (
-        <div style={styles.progressBarWrapper}>
-          <div
-            style={{
-              ...styles.progressBar,
-              width: `${progress}%`
-            }}
-          />
+      {/* ✅ CONFIRM UPLOAD */}
+      {isPreview && (
+        <button
+          style={styles.uploadBtn}
+          onClick={handleUpload}
+          disabled={uploading}
+        >
+          {uploading ? 'Uploading...' : 'Confirm Upload'}
+        </button>
+      )}
+
+      {/* ✅ PREVIEW TABLE */}
+      {isPreview && previewRows.length > 0 && (
+        <div style={styles.previewBox}>
+          <h3>Preview (First 20 rows)</h3>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th>Q</th>
+                <th>A</th>
+                <th>B</th>
+                <th>C</th>
+                <th>D</th>
+                <th>Ans</th>
+              </tr>
+            </thead>
+            <tbody>
+              {previewRows.slice(0, 20).map((row, i) => (
+                <tr key={i}>
+                  <td>{row.question}</td>
+                  <td>{row.option_a}</td>
+                  <td>{row.option_b}</td>
+                  <td>{row.option_c}</td>
+                  <td>{row.option_d}</td>
+                  <td>{row.correct_answer}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
       {errors.length > 0 && (
         <div style={styles.errorBox}>
           <ul>
-            {errors.map((e, i) => (
-              <li key={i}>{e}</li>
-            ))}
+            {errors.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
         </div>
       )}
@@ -264,13 +307,10 @@ export default function UploadQuestionsPage() {
       )}
 
       {toast && (
-        <div
-          style={{
-            ...styles.toast,
-            background:
-              toast.type === 'error' ? '#dc2626' : '#16a34a'
-          }}
-        >
+        <div style={{
+          ...styles.toast,
+          background: toast.type === 'error' ? '#dc2626' : '#16a34a'
+        }}>
           {toast.message}
         </div>
       )}
@@ -302,18 +342,14 @@ const styles = {
     cursor: 'pointer'
   },
 
-  progressBarWrapper: {
-    marginTop: 15,
-    height: 8,
-    background: '#e5e7eb',
-    borderRadius: 6
+  previewBox: {
+    marginTop: 20,
+    overflowX: 'auto'
   },
 
-  progressBar: {
-    height: 8,
-    background: '#2563eb',
-    borderRadius: 6,
-    transition: 'width 0.3s ease'
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse'
   },
 
   errorBox: {
@@ -337,7 +373,6 @@ const styles = {
     padding: '12px 18px',
     color: '#fff',
     borderRadius: 8,
-    fontWeight: 600,
-    boxShadow: '0 6px 20px rgba(0,0,0,0.2)'
+    fontWeight: 600
   }
 }
