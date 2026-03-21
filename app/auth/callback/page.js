@@ -11,37 +11,28 @@ export default function AuthCallback() {
 
   async function handleAuth() {
 
-    const { data } = await supabase.auth.getSession()
-
-    if (!data.session) {
-      window.location.href = '/'
-      return
-    }
-
-    // ✅ Get logged-in user
+    // ✅ WAIT for user (fix double login issue)
     const { data: userData } = await supabase.auth.getUser()
 
-    const email = userData?.user?.email
-
-    if (!email) {
+    if (!userData?.user) {
       window.location.href = '/'
       return
     }
 
-    // ✅ Check student record
+    const email = userData.user.email
+
+    // ✅ Check student
     const { data: student } = await supabase
       .from('students')
       .select('exam_preference')
       .eq('email', email)
       .single()
 
-    // 🚨 NEW USER or missing exam preference → signup
     if (!student || !student.exam_preference) {
       window.location.href = '/signup'
       return
     }
 
-    // ✅ EXISTING USER → continue normal flow
     window.location.href = '/select-category'
   }
 
