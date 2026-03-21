@@ -1,14 +1,37 @@
 'use client'
 
 import { supabase } from '../../lib/supabase'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function SelectCategory() {
+
+  const [examPref, setExamPref] = useState('')
+
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) window.location.href = '/'
-    })
+    checkUser()
   }, [])
+
+  async function checkUser() {
+
+    const { data } = await supabase.auth.getUser()
+
+    if (!data.user) {
+      window.location.href = '/'
+      return
+    }
+
+    const email = data.user.email
+
+    const { data: student } = await supabase
+      .from('students')
+      .select('exam_preference')
+      .eq('email', email)
+      .single()
+
+    if (student?.exam_preference) {
+      setExamPref(student.exam_preference)
+    }
+  }
 
   function go(cat) {
     window.location.href = `/student-home?category=${cat}`
@@ -26,6 +49,7 @@ export default function SelectCategory() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
+
         {/* TOP ACTIONS */}
         <div style={styles.topActions}>
           <button onClick={goProfile} style={styles.profileBtn}>
@@ -36,31 +60,46 @@ export default function SelectCategory() {
           </button>
         </div>
 
-        <h1>Select Exam Category</h1>
-        <p style={{ color: '#555', marginBottom: 30 }}>
-          Choose the exam you want to attempt
+        <h1>Welcome to MCQ Platform 🚀</h1>
+
+        {/* ✅ NEW CONTENT */}
+        <p style={{ color: '#555', marginBottom: 20 }}>
+          Practice high-quality MCQs, track your performance, and improve your rank with real exam-level questions.
         </p>
 
-        <button
-          style={{ ...styles.btn, background: '#2563eb' }}
-          onClick={() => go('JEE_MAINS')}
-        >
-          JEE Mains
-        </button>
+        <p style={{ color: '#2563eb', fontWeight: 600, marginBottom: 30 }}>
+          Showing exams for: {examPref === 'NEET' ? 'NEET UG' : 'JEE'}
+        </p>
 
-        <button
-          style={{ ...styles.btn, background: '#7c3aed' }}
-          onClick={() => go('JEE_ADVANCED')}
-        >
-          JEE Advanced
-        </button>
+        {/* ✅ SHOW ONLY RELEVANT EXAMS */}
 
-        <button
-          style={{ ...styles.btn, background: '#16a34a' }}
-          onClick={() => go('NEET')}
-        >
-          NEET UG
-        </button>
+        {examPref === 'JEE' && (
+          <>
+            <button
+              style={{ ...styles.btn, background: '#2563eb' }}
+              onClick={() => go('JEE_MAINS')}
+            >
+              JEE Mains
+            </button>
+
+            <button
+              style={{ ...styles.btn, background: '#7c3aed' }}
+              onClick={() => go('JEE_ADVANCED')}
+            >
+              JEE Advanced
+            </button>
+          </>
+        )}
+
+        {examPref === 'NEET' && (
+          <button
+            style={{ ...styles.btn, background: '#16a34a' }}
+            onClick={() => go('NEET')}
+          >
+            NEET UG
+          </button>
+        )}
+
       </div>
     </div>
   )
