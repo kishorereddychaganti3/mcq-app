@@ -45,6 +45,7 @@ export default function SignupPage() {
       return
     }
 
+    // ✅ FIXED UPSERT WITH onConflict
     const { error } = await supabase
       .from('students')
       .upsert({
@@ -53,6 +54,8 @@ export default function SignupPage() {
         last_name: lastName,
         phone,
         exam_preference: exam
+      }, {
+        onConflict: 'email'
       })
 
     if (error) {
